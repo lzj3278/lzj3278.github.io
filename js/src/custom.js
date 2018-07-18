@@ -1,63 +1,84 @@
-//此函数用于创建复制按钮
+var browserHeight = document.documentElement.clientHeight || document.body.clientHeight;
+var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 function createCopyBtns() {
-    var $codeArea = $("figure table");
-    //查看页面是否具有代码区域，没有代码块则不创建 复制按钮
+    // 创建复制button 对象
+    var $figure = $("figure .figcode");
+    if ($figure.length > 0) {
+        $(".post-body").before('<div id="copyBtn" ><span id="imgCopy" ><i class="fa fa-paste fa-fw"></i></span><span id="imgSuccess" style="display: none;color: #6FB76F;"><i class="fa fa-check-circle fa-fw" aria-hidden="true"></i></span>');
+        $figure.append('<div class="codePinBtn"><img id="imgSuccess" src="/article_images/png/Pin_green.png" style="border:none; width: 24px;"></div>');
+    }
+    var $codeArea = $("figure .code");
     if ($codeArea.length > 0) {
-        //复制成功后将要干的事情
         function changeToSuccess(item) {
-             $imgOK = $("#copyBtn").find("#imgSuccess");
-                if ($imgOK.css("display") == "none") {
-                    $imgOK.css({
-                        opacity: 0,
-                        display: "block"
-                    });
+            $imgOK = $("#copyBtn").find("#imgSuccess");
+            if ($imgOK.css("display") == "none") {
+                $imgOK.css({
+                    opacity: 0,
+                    display: "block"
+                });
+                $imgOK.animate({
+                    opacity: 1
+                }, 1000);
+                setTimeout(function () {
                     $imgOK.animate({
-                        opacity: 1
-                    }, 1000);
-                    setTimeout(function() {
-                        $imgOK.animate({
-                            opacity: 0
-                        }, 2000);
+                        opacity: 0
                     }, 2000);
-                    setTimeout(function() {
-                        $imgOK.css("display", "none");
-                    }, 4000);
-                };
+                }, 2000);
+                setTimeout(function () {
+                    $imgOK.css("display", "none");
+                }, 4000);
+            }
+            ;
         };
-        //创建 全局复制按钮，仅有一组。包含：复制按钮，复制成功响应按钮
-        //值得注意的是：1.按钮默认隐藏，2.位置使用绝对位置 position: absolute; (position: fixed 也可以，需要修改代码)
-        $(".post-body").before('<div id="copyBtn" style="opacity: 0; position: absolute;top:0px;display: none;line-height: 1; font-size:1.5em"><span id="imgCopy" ><i class="fa fa-paste fa-fw"></i></span><span id="imgSuccess" style="display: none;"><i class="fa fa-check-circle fa-fw" aria-hidden="true"></i></span>');
-        //创建 复制 插件，绑定单机时间到 指定元素，支持JQuery
-        var clipboard = new Clipboard('#copyBtn', {
-            target: function() {
-                //返回需要复制的元素内容
-                return document.querySelector("[copyFlag]");
+        var clipboard = new ClipboardJS('#copyBtn', {
+            // 定制筛选复制
+            target: function () {
+                var node = document.querySelector("[copyFlag]");
+                var child = node.querySelector(".diff-deletion");
+                if (child != null) {
+                    var pre = node.querySelector("pre").cloneNode(true);
+                    child = pre.querySelector(".diff-deletion");
+                    while (child != null) {
+                        pre.removeChild(child)
+                        child = pre.querySelector(".diff-deletion");
+                    }
+                    var node = document.getElementById('tmpcopy');
+                    if (node == null) {
+                        node = document.createElement('div');
+                        node.id = 'tmpcopy';
+                        node.style.position = 'fixed';
+                        node.style.width = '0';
+                        node.style.height = '0';
+                        document.body.appendChild(node);
+                    }
+                    node.innerHTML = '';
+                    node.appendChild(pre);
+                }
+                return node;
             },
-            isSupported: function() {
-                //支持复制内容
+            isSupported: function () {
+                alert(this.support);
                 return document.querySelector("[copyFlag]");
             }
         });
-        //复制成功事件绑定
         clipboard.on('success',
-            function(e) {
-                //清除内容被选择状态
+            function (e) {
                 e.clearSelection();
                 changeToSuccess(e);
+                var node = document.getElementById("tmpcopy");
+                if (node != null) node.innerHTML = '';
             });
-        //复制失败绑定事件
         clipboard.on('error',
-            function(e) {
+            function (e) {
                 console.error('Action:', e.action);
                 console.error('Trigger:', e.trigger);
             });
-        //鼠标 在复制按钮上滑动和离开后渐变显示/隐藏效果
         $("#copyBtn").hover(
-            function() {
+            function () {
                 $(this).stop();
                 $(this).css("opacity", 1);
             },
-            function() {
+            function () {
                 $(this).animate({
                     opacity: 0
                 }, 2000);
@@ -65,9 +86,55 @@ function createCopyBtns() {
         );
     }
 }
-//感应鼠标是否在代码区
+function FigureHover(figure) {
+    // 移动鼠标拉伸显示代码
+    var block = $(figure).attr("block");
+    if (block != 1) {
+        var codeArea = $(figure).find(".code")[0];
+        var width_code = codeArea.clientWidth;
+        var width_Scroll = codeArea.scrollWidth;
+        var width_Margin = -parseInt($(figure).css("marginRight"));
+        $codePinBtn = $(figure).find(".codePinBtn");
+        var width_Hide = width_Scroll - (width_code - width_Margin);
+        if (width_Hide > 0) {
+            $(figure).stop();
+            $codePinBtn.stop();
+            var width_Main = $("#main").width();
+            var width_Base = $(".main-inner").width();
+            var width_Blank = (width_Main - width_Base) / 2 - 10;
+            if (width_Blank > 0) {
+                if (width_Hide < width_Blank) {
+                    width_Margin = width_Hide; //空白区域足够直接显示 全部
+                } else {
+                    width_Margin = width_Blank * 0.8;
+                }
+                $(figure).animate({marginRight: -width_Margin});
+                $codePinBtn.animate({opacity: 1});
+            }
+        }
+        ;
+    }
+    ;
+};
+function FigureHoverOut(figure) {
+    // 鼠标移除代码块
+    $("#copyBtn").animate({
+        opacity: 0
+    }, 2000);
+    var block = $(figure).attr("block");
+    if (block != 1) {
+        $(figure).stop();
+        $(figure).animate({marginRight: "0"});
+        var $codePinBtn = $(figure).find(".codePinBtn");
+        $codePinBtn.stop();
+        $codePinBtn.css({opacity: 0});
+    }
+};
 $("figure").hover(
-    function() {
+    // 鼠标移入代码块
+    function () {
+        FigureHover(this);
+        var block = $(this).attr("block");
         //-------鼠标活动在代码块内
         //移除之前含有复制标志代码块的 copyFlag
         $("[copyFlag]").removeAttr("copyFlag");
@@ -88,15 +155,74 @@ $("figure").hover(
             $copyBtn.css("left", -$copyBtn.width() - 3);
         }
     },
-    function() {
-        //-------鼠标离开代码块
-        //设置复制按钮可见度 2秒内到 0
-        $("#copyBtn").animate({
-            opacity: 0
-        }, 2000);
-    }
+    function () {
+        FigureHoverOut(this);
+    },
 );
-//页面载入完成后，创建复制按钮
-$(document).ready(function() {
-  createCopyBtns();
+function btnPinClick() {
+    var figure = this.parentElement.parentElement;
+    var block = $(figure).attr("block");
+    if (block != 1) {
+        $(".post-body").css("transform", "none");
+        $(figure).attr("block", 1);
+        $(this).find("img").attr("src", "/article_images/png/Pin_red.png");
+    } else {
+        $(figure).attr("block", 0);
+        $(this).find("img").attr("src", "/article_images/png/Pin_green.png");
+    }
+}
+$("figure").unbind("dblclick").bind("dblclick", function () { //双击事件
+    var block = $(this).attr("block");
+    if (block != 1) {
+        $(".post-body").css("transform", "none");
+        $(this).attr("block", 1);
+        $(this).find(".codePinBtn img").attr("src", "/article_images/png/Pin_red.png");
+    } else {
+        $(this).attr("block", 0);
+        $(this).find(".codePinBtn img").attr("src", "/article_images/png/Pin_green.png");
+    }
+})
+$(window).resize(function () {
+    var block;
+    var width_Main = $("#main").width();
+    var width_Base = $(".main-inner").width();
+    var width_Blank = (width_Main - width_Base) / 2 - 10;
+    $copyBtn = $("#copyBtn");
+    if (width_Blank < $copyBtn.width()) {
+        $copyBtn.css("display", "none");
+    } else {
+        $copyBtn.css("display", "block");
+    }
+    $("figure[block='1']").each(function () {
+        block = $(this).attr("block");
+        if (block == 1) {
+            var width_This = $(this).width();
+            var width_Scroll = $(this)[0].scrollWidth;
+            var width_Margin = -parseInt($(this).css("marginRight"));
+            var width_Hide = width_Scroll - (width_This - width_Margin);
+            if (width_Hide > 0) {
+                //var width_Main  = $("#main").width();
+                //var width_Base  = $(".main-inner").width();
+                //width_Blank = (width_Main - width_Base) / 2 - 10;
+                if (width_Blank > 0) {
+                    if (width_Hide < width_Blank) {
+                        width_Margin = width_Hide; //空白区域足够直接显示 全部
+                    } else {
+                        width_Margin = width_Blank * 0.8;
+                    }
+                    $(this).css({
+                        marginRight: -width_Margin
+                    });
+                    $(this).find(".codePinBtn").animate({
+                        opacity: 1,
+                        left: $(".post-body")[0].getBoundingClientRect().right + width_Margin - $(this).find(".codePinBtn").width()
+                    });
+                }
+            }
+        }
+    });
+});
+$(document).ready(function () {
+    createCopyBtns();
+    $(".codePinBtn").unbind("click").bind("click", btnPinClick);
 });
